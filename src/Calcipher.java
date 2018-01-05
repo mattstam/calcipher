@@ -12,7 +12,6 @@ import java.util.List;
  * Calculates the best possible answer for multiple-choice questions using techniques to maximize accuracy
  * without any other outside resources or knowledge.
  * 
- * Created by Matt-Stam on 12/29/17
  */
 
 public class Calcipher
@@ -111,17 +110,16 @@ public class Calcipher
     private static List<String> addNewLine(List<String> outputLines, int[] answerSizes)
     {   
         int size = answerSizes[0];
-        for (int i = 0; i < answerSizes.length; i++)
+        for (int i = 0; i < answerSizes.length-1; i++)
         {
-            System.out.println(size);
-            for(int j = 0; j < outputLines.size()+i-1; j++)
+            for(int j = 0; j < outputLines.size()+i; j++)
             {
                 if(j == size)
                 {
-                    outputLines.add(j+i-1, "<br>");
+                    outputLines.add(j+i, "<br>");
                 }
             }
-            size = size + answerSizes[i];
+            size = size + answerSizes[i+1];
         }
         return outputLines;
     }
