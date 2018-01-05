@@ -1,6 +1,16 @@
 # Calcipher
-Calculates the best possible answer for multiple-choice questions using techniques to maximize accuracy without any other outside resources or knowledge.
+Calcipher is a Java program that calculates the best possible answer for multiple-choice questions using techniques to maximize accuracy without any other outside resources or knowledge.
 
+### Example Questions:
+![examplequestions](https://user-images.githubusercontent.com/15695189/34632225-e0c04932-f239-11e7-862b-d92b27d7eabf.png)
+
+### Result:
+![exampleanswers](https://user-images.githubusercontent.com/15695189/34632229-e359ee00-f239-11e7-9c80-2cd0c96ef745.png)
+
+### How to use
+Enter in a text file with the questions you want analyzed. The program will determine the best possible answers for each question. Those answers are bolded in an HTML file. 
+
+### Methodology
 In theory, guessing on a 4 answer multiple choice test would yield a result of around 25% correct. However, we can increase our accuracy if we exploit the techniques that creators typically use to design these tests. There are multiple ways we can reverse-engineer this these techniques and use them to bolster the amount of questions we can correctly guess. 
 
 One of the most powerful of these techniques is to look at word occurancies between each question's answers. When test false answer choices are designed, they are made with slight deviations from the correct choice. In these false answers, there is often a part of the answer that is correct combined with part of the answer that is incorrect. This gives each question multiple answers that seem viable, which should make it harder to guess on. However, if we look for these types of patterns, we can use them to guess the correct answer. 
@@ -11,9 +21,9 @@ For example:
   
    a) White Stratus
   
-    b) Black Cirrocumulus
+   b) Black Cirrocumulus
   
-    c) Grey Stratus
+   c) Grey Stratus
   
    d) Grey Cirrus 
   
