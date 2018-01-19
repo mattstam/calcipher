@@ -8,10 +8,10 @@ import java.util.Scanner;
 import java.util.ArrayList;
 import java.util.List;
 
+
 /**
  * Calculates the best possible answer for multiple-choice questions using techniques to maximize accuracy
  * without any other outside resources or knowledge.
- * 
  */
 
 public class Calcipher
