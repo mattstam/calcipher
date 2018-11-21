@@ -1,3 +1,5 @@
+package stam.mainpackage;
+
 public class Option
 {
     private String answer;
