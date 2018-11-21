@@ -8,7 +8,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Scanner;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -24,6 +28,9 @@ public class Calcipher
     private static final double PATTERN_BIAS = 1;
     private static final double LENGTH_BIAS = 0.5;
     private static final double BOLD_LIMIT = 0.9;
+    private static List<String> lines = new ArrayList<String>();
+    private static Option[] choices;
+    private static int[] answerSizes;
     
     public static void main(String[] args) 
 	{
@@ -31,61 +38,59 @@ public class Calcipher
         Scanner sc = new Scanner(System.in);
         File file = new File(sc.nextLine());
         
-        // Generate empty Option[] with correct size and values of 0.0
-        Estimate e = new Estimate();
-        e.generateChoices(file);
+        // Generate an empty Option[] with correct size and values of 0.0
+        choices = generateChoices(file, lines);
         
         // Looks for word repetitions in all of the answers
         // Also prioritizes "All of the above" type answers
-        Pattern p = new Pattern();
-        p.analyze(file);
+        List<String> repeaters;
+        repeaters = analyze(file);
         
         // Looks for for longest answer
-        Longest l = new Longest();
-        l.findLongest(file);
+        List<String> longs;
+        longs = findLongest(file);
         
-        Option[] answerKey = new Option[0];
+        Option[] answerKey;
         
-        addPatterns(p, e);
-        addLongest(l ,e);
-        answerKey = e.choices;
+        addPatterns(repeaters);
+        addLongest(longs);
+        
+        answerKey = choices;
 
-        createHTML(addNewLine(boldAnswers(answerKey), p.answerSizes));
+        createHTML(addNewLine(boldAnswers(answerKey), answerSizes));
         
         sc.close();
     }
     
     // Pattern answer winners get bias value added
-    private static Estimate addPatterns(Pattern p, Estimate e)
+    private static void addPatterns(List<String> repeaters)
     {
-        for (int i = 0; i < p.result.size(); i++)
+        for (int i = 0; i < repeaters.size(); i++)
         {
-            for (int j = 0; j < e.lines.size(); j++)
+            for (int j = 0; j < lines.size(); j++)
             {
-                if(p.result.get(i).equals(e.lines.get(j))) 
+                if(repeaters.get(i).equals(lines.get(j))) 
                 {
-                    e.choices[j].addValue(PATTERN_BIAS);
+                    choices[j].addValue(PATTERN_BIAS);
                 }
             }
         }
         
-        return e;
     }
     
     // Longest answer winners get bias value added
-    private static Estimate addLongest(Longest l, Estimate e)
+    private static void addLongest(List<String> longs)
     {
-        for (int i = 0; i < l.longs.size(); i++)
+        for (int i = 0; i < longs.size(); i++)
         {
-            for (int j = 0; j < e.lines.size(); j++)
+            for (int j = 0; j < lines.size(); j++)
             {
-                if(l.longs.get(i).equals(e.lines.get(j))) 
+                if(longs.get(i).equals(lines.get(j))) 
                 {
-                    e.choices[j].addValue(LENGTH_BIAS);
+                    choices[j].addValue(LENGTH_BIAS);
                 }
             }
         }
-        return e;
     }
     
     // Bold any answer that is greater than the BOLD_LIMIT set
@@ -137,5 +142,248 @@ public class Calcipher
             ex.printStackTrace();
         }
     }
+    
+    
+    // Generate empty Option[] with correct size and values of 0.0
+    public static Option[] generateChoices(File file, List<String> lines)
+	{
+        Option[] choices = new Option[0];
+        
+        try 
+        {
+            Scanner sc = new Scanner(file);
+            
+            // Split questions into list
+            // Each String in list represents one question with its answers
+            String delimiter = System.getProperty("line.separator");
+            sc.useDelimiter(delimiter);
+            StringBuilder sb = new StringBuilder();
+            List<String> questions = new ArrayList<>();
+            
+            while (sc.hasNextLine())
+            {
+                String line = sc.nextLine();
+                if(!(line.trim().length() == 0))
+                {
+                    sb.append(line).append(delimiter);
+                }
+                else if
+                (sb.toString().length() > 0) 
+                {
+                    questions.add(sb.toString());
+                    sb.setLength(0);
+                }
+            }
+            
+            if(sb.toString().length() > 0) 
+            {
+                questions.add(sb.toString());
+            }
+
+            
+            String[] separator = new String[0];
+            
+            // Put all answers into array
+            for (int i = 0; i < questions.size(); i++)
+            {
+                separator = questions.get(i).split("\n");
+                
+                // Start at 1 to skip over question line to get only answer lines
+                for (int j = 1; j < separator.length; j++)
+                {
+                    lines.add(separator[j]);
+                }
+            }
+            
+            // Creates Options[] from those answers all with value 0.0
+            Option[] temp = new Option[lines.size()];
+            
+            for (int i = 0; i < lines.size(); i++)
+            {
+                temp[i] = new Option(lines.get(i), 0.0);
+            }
+            
+            choices = temp; 
+            
+            sc.close();
+        } 
+        catch (Exception ex)
+        {
+            ex.printStackTrace();
+        }
+        
+        return choices;
+    
+    }
  
+
+    // Looks for words that are repeated in a answer bunch 
+    // Selects answers with the highest number of these word repeaters
+    // Also gives inherent word repeater activation toward "None of the above" type questions
+    public static List<String> analyze(File file)
+	{
+        List<String> result = new ArrayList<String>();
+        
+        try 
+        {
+            Scanner sc = new Scanner(file);
+            
+            // Split questions into list
+            // Each String in list represents one question with its answers
+            String delimiter = System.getProperty("line.separator");
+            sc.useDelimiter(delimiter);
+            StringBuilder sb = new StringBuilder();
+            List<String> questions = new ArrayList<>();
+            
+            while (sc.hasNextLine())
+            {
+                String line = sc.nextLine();
+                if(!(line.trim().length() == 0))
+                {
+                    sb.append(line).append(delimiter);
+                }
+                else if
+                (sb.toString().length() > 0) 
+                {
+                    questions.add(sb.toString());
+                    sb.setLength(0);
+                }
+            }
+            
+            if(sb.toString().length() > 0) 
+            {
+                questions.add(sb.toString());
+            }
+
+            int[] questionLengths = new int[questions.size()];
+            
+            // Holds separated lines from each question
+            String[] separator = new String[0];
+            
+            // Counts number of word repetitions
+            for (int i = 0; i < questions.size(); i++)
+            {
+                List<String> lines = new ArrayList<String>();
+                separator = questions.get(i).split("\n");
+                
+                // Start at 1 to skip over question line to get only answer lines
+                for (int j = 1; j < separator.length; j++)
+                {
+                    lines.add(separator[j]);
+                }
+                
+                questionLengths[i] = lines.size(); 
+                answerSizes = questionLengths;
+                
+                HashMap<String, HashSet<String>> data = new HashMap<>();
+                HashMap<String, Integer> wordIndex = new HashMap<>();
+                
+                // Look at each word and add value of 1 if is repeated
+                for (String line : lines)
+                {
+                    List<String> words = Arrays.asList(line.split(" "));
+                    data.put(line, new HashSet<>(words));
+                    for (String word : words)
+                    {
+                        wordIndex.merge(word, 1, Integer::sum);
+                    }
+                    
+                    // Bias towards "All of the above" type answers
+                    wordIndex.merge("All", 1, Integer::sum);
+                    wordIndex.merge("all", 1, Integer::sum);
+                    wordIndex.merge("Always", 1, Integer::sum);
+                    wordIndex.merge("always", 1, Integer::sum);
+                    wordIndex.merge("Never", 1, Integer::sum);
+                    wordIndex.merge("never", 1, Integer::sum);
+                    wordIndex.merge("None", 1, Integer::sum);
+                    wordIndex.merge("none", 1, Integer::sum);
+                }
+                
+                wordIndex.entrySet().removeIf(e->e.getValue() <= 1);
+                
+                for (Map.Entry<String, HashSet<String>> value : data.entrySet())
+                {
+                    value.getValue().retainAll(wordIndex.keySet());
+                }
+                    
+                // Add key with highest max value, which is the answer with the most repeater words
+                result.add(data.entrySet().stream().max((a, b) -> Integer.compare(a.getValue().size(), b.getValue().size())).get().getKey());       
+            }
+            sc.close();
+        } 
+        catch (Exception ex)
+        {
+            ex.printStackTrace();
+        }
+        
+        return result;
+    }
+
+    // Looks for for longest answer per question
+    public static List<String> findLongest(File file)
+    {
+ 
+        List<String> longs = new ArrayList<String>();
+        
+        try 
+        {
+            Scanner sc = new Scanner(file);
+            
+            // Split questions into list
+            // Each String in list represents one question with its answers
+            String delimiter = System.getProperty("line.separator");
+            sc.useDelimiter(delimiter);
+            StringBuilder sb = new StringBuilder();
+            List<String> questions = new ArrayList<>();
+            
+            while (sc.hasNextLine())
+            {
+                String line = sc.nextLine();
+                if(!(line.trim().length() == 0))
+                {
+                    sb.append(line).append(delimiter);
+                }
+                else if
+                (sb.toString().length() > 0) 
+                {
+                    questions.add(sb.toString());
+                    sb.setLength(0);
+                }
+            }
+            
+            if(sb.toString().length() > 0) 
+            {
+                questions.add(sb.toString());
+            }
+            
+            // Splits each question + answer combination into their own array
+            // Than finds the answer with the maximum length and adds it to longs list
+            String[] separator = new String[0];
+            for (int i = 0; i < questions.size(); i++)
+            {
+                separator = questions.get(i).split("\n");
+               
+                int index = 0;
+                int max = separator[1].length();
+                
+                // Start at 1 to skip over question line to get only answer lines
+                for (int j = 1; j < separator.length; j++)
+                {
+                    if(separator[j].length() > max)
+                    {
+                        index = j;
+                        max = separator[j].length();
+                    }
+                }
+                longs.add(separator[index]);
+            }
+            sc.close();
+        } 
+        catch (Exception ex)
+        {
+            ex.printStackTrace();
+        }
+        
+        return longs;
+    }
 }
