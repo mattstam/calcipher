@@ -38,17 +38,20 @@ public class Calcipher
         Scanner sc = new Scanner(System.in);
         File file = new File(sc.nextLine());
         
+        // Generate List of questions from file
+        List<String> questions = readFile(file);
+        
         // Generate an empty Option[] with correct size and values of 0.0
-        choices = generateChoices(file, lines);
+        choices = generateChoices(lines, questions);
         
         // Looks for word repetitions in all of the answers
         // Also prioritizes "All of the above" type answers
         List<String> repeaters;
-        repeaters = analyze(file);
+        repeaters = analyze(questions);
         
         // Looks for for longest answer
         List<String> longs;
-        longs = findLongest(file);
+        longs = findLongest(questions);
         
         Option[] answerKey;
         
@@ -133,10 +136,11 @@ public class Calcipher
     
     // Write final output lines to html file
     public static void createHTML(List<String> outputLines) {
-        try {
+        try 
+        {
             Charset utf8 = StandardCharsets.UTF_8;
             Files.write(Paths.get("AnswerKey.html"), outputLines, utf8);
-            }
+        }
         catch (IOException ex)
         {
             ex.printStackTrace();
@@ -145,95 +149,48 @@ public class Calcipher
     
     
     // Generate empty Option[] with correct size and values of 0.0
-    public static Option[] generateChoices(File file, List<String> lines)
+    public static Option[] generateChoices(List<String> lines, List<String> questions)
 	{
-        Option[] choices = new Option[0];
+        Option[] choices;
+        String[] separator;
         
-        try 
+        // Put all answers into array
+        for (int i = 0; i < questions.size(); i++)
         {
-            Scanner sc = new Scanner(file);
+            separator = questions.get(i).split("\n");
             
-            // Split questions into list
-            // Each String in list represents one question with its answers
-            String delimiter = System.getProperty("line.separator");
-            sc.useDelimiter(delimiter);
-            StringBuilder sb = new StringBuilder();
-            List<String> questions = new ArrayList<>();
-            
-            while (sc.hasNextLine())
+            // Start at 1 to skip over question line to get only answer lines
+            for (int j = 1; j < separator.length; j++)
             {
-                String line = sc.nextLine();
-                if(!(line.trim().length() == 0))
-                {
-                    sb.append(line).append(delimiter);
-                }
-                else if
-                (sb.toString().length() > 0) 
-                {
-                    questions.add(sb.toString());
-                    sb.setLength(0);
-                }
+                lines.add(separator[j]);
             }
-            
-            if(sb.toString().length() > 0) 
-            {
-                questions.add(sb.toString());
-            }
-
-            
-            String[] separator = new String[0];
-            
-            // Put all answers into array
-            for (int i = 0; i < questions.size(); i++)
-            {
-                separator = questions.get(i).split("\n");
-                
-                // Start at 1 to skip over question line to get only answer lines
-                for (int j = 1; j < separator.length; j++)
-                {
-                    lines.add(separator[j]);
-                }
-            }
-            
-            // Creates Options[] from those answers all with value 0.0
-            Option[] temp = new Option[lines.size()];
-            
-            for (int i = 0; i < lines.size(); i++)
-            {
-                temp[i] = new Option(lines.get(i), 0.0);
-            }
-            
-            choices = temp; 
-            
-            sc.close();
-        } 
-        catch (Exception ex)
-        {
-            ex.printStackTrace();
         }
+        
+        // Creates Options[] from those answers all with value 0.0
+        Option[] temp = new Option[lines.size()];
+        
+        for (int i = 0; i < lines.size(); i++)
+        {
+            temp[i] = new Option(lines.get(i), 0.0);
+        }
+        
+        choices = temp; 
         
         return choices;
     
     }
  
-
-    // Looks for words that are repeated in a answer bunch 
-    // Selects answers with the highest number of these word repeaters
-    // Also gives inherent word repeater activation toward "None of the above" type questions
-    public static List<String> analyze(File file)
-	{
-        List<String> result = new ArrayList<String>();
+    public static List<String> readFile(File file)
+    {
+        List<String> questions = new ArrayList<>();
         
-        try 
+    	try 
         {
             Scanner sc = new Scanner(file);
             
-            // Split questions into list
-            // Each String in list represents one question with its answers
             String delimiter = System.getProperty("line.separator");
             sc.useDelimiter(delimiter);
             StringBuilder sb = new StringBuilder();
-            List<String> questions = new ArrayList<>();
             
             while (sc.hasNextLine())
             {
@@ -254,134 +211,106 @@ public class Calcipher
             {
                 questions.add(sb.toString());
             }
+        }
+		catch (Exception ex)
+		{
+		    ex.printStackTrace();
+		}
 
-            int[] questionLengths = new int[questions.size()];
-            
-            // Holds separated lines from each question
-            String[] separator = new String[0];
-            
-            // Counts number of word repetitions
-            for (int i = 0; i < questions.size(); i++)
-            {
-                List<String> lines = new ArrayList<String>();
-                separator = questions.get(i).split("\n");
-                
-                // Start at 1 to skip over question line to get only answer lines
-                for (int j = 1; j < separator.length; j++)
-                {
-                    lines.add(separator[j]);
-                }
-                
-                questionLengths[i] = lines.size(); 
-                answerSizes = questionLengths;
-                
-                HashMap<String, HashSet<String>> data = new HashMap<>();
-                HashMap<String, Integer> wordIndex = new HashMap<>();
-                
-                // Look at each word and add value of 1 if is repeated
-                for (String line : lines)
-                {
-                    List<String> words = Arrays.asList(line.split(" "));
-                    data.put(line, new HashSet<>(words));
-                    for (String word : words)
-                    {
-                        wordIndex.merge(word, 1, Integer::sum);
-                    }
-                    
-                    // Bias towards "All of the above" type answers
-                    wordIndex.merge("All", 1, Integer::sum);
-                    wordIndex.merge("all", 1, Integer::sum);
-                    wordIndex.merge("Always", 1, Integer::sum);
-                    wordIndex.merge("always", 1, Integer::sum);
-                    wordIndex.merge("Never", 1, Integer::sum);
-                    wordIndex.merge("never", 1, Integer::sum);
-                    wordIndex.merge("None", 1, Integer::sum);
-                    wordIndex.merge("none", 1, Integer::sum);
-                }
-                
-                wordIndex.entrySet().removeIf(e->e.getValue() <= 1);
-                
-                for (Map.Entry<String, HashSet<String>> value : data.entrySet())
-                {
-                    value.getValue().retainAll(wordIndex.keySet());
-                }
-                    
-                // Add key with highest max value, which is the answer with the most repeater words
-                result.add(data.entrySet().stream().max((a, b) -> Integer.compare(a.getValue().size(), b.getValue().size())).get().getKey());       
-            }
-            sc.close();
-        } 
-        catch (Exception ex)
+    	return questions;
+    }
+
+    // Looks for words that are repeated in a answer bunch 
+    // Selects answers with the highest number of these word repeaters
+    // Also gives inherent word repeater activation toward "None of the above" type questions
+    public static List<String> analyze(List<String> questions)
+	{
+        List<String> result = new ArrayList<String>();
+
+        int[] questionLengths = new int[questions.size()];
+        
+        // Holds separated lines from each question
+        String[] separator = new String[0];
+        
+        // Counts number of word repetitions
+        for (int i = 0; i < questions.size(); i++)
         {
-            ex.printStackTrace();
+            List<String> lines = new ArrayList<String>();
+            separator = questions.get(i).split("\n");
+            
+            // Start at 1 to skip over question line to get only answer lines
+            for (int j = 1; j < separator.length; j++)
+            {
+                lines.add(separator[j]);
+            }
+            
+            questionLengths[i] = lines.size(); 
+            answerSizes = questionLengths;
+            
+            HashMap<String, HashSet<String>> data = new HashMap<>();
+            HashMap<String, Integer> wordIndex = new HashMap<>();
+            
+            // Look at each word and add value of 1 if is repeated
+            for (String line : lines)
+            {
+                List<String> words = Arrays.asList(line.split(" "));
+                data.put(line, new HashSet<>(words));
+                for (String word : words)
+                {
+                    wordIndex.merge(word, 1, Integer::sum);
+                }
+                
+                // Bias towards "All of the above" type answers
+                wordIndex.merge("All", 1, Integer::sum);
+                wordIndex.merge("all", 1, Integer::sum);
+                wordIndex.merge("Always", 1, Integer::sum);
+                wordIndex.merge("always", 1, Integer::sum);
+                wordIndex.merge("Never", 1, Integer::sum);
+                wordIndex.merge("never", 1, Integer::sum);
+                wordIndex.merge("None", 1, Integer::sum);
+                wordIndex.merge("none", 1, Integer::sum);
+            }
+            
+            wordIndex.entrySet().removeIf(e->e.getValue() <= 1);
+            
+            for (Map.Entry<String, HashSet<String>> value : data.entrySet())
+            {
+                value.getValue().retainAll(wordIndex.keySet());
+            }
+                
+            // Add key with highest max value, which is the answer with the most repeater words
+            result.add(data.entrySet().stream().max((a, b) -> Integer.compare(a.getValue().size(), b.getValue().size())).get().getKey());       
         }
         
         return result;
     }
 
     // Looks for for longest answer per question
-    public static List<String> findLongest(File file)
+    public static List<String> findLongest(List<String> questions)
     {
  
         List<String> longs = new ArrayList<String>();
-        
-        try 
+    
+        // Splits each question + answer combination into their own array
+        // Than finds the answer with the maximum length and adds it to longs list
+        String[] separator = new String[0];
+        for (int i = 0; i < questions.size(); i++)
         {
-            Scanner sc = new Scanner(file);
+            separator = questions.get(i).split("\n");
+           
+            int index = 0;
+            int max = separator[1].length();
             
-            // Split questions into list
-            // Each String in list represents one question with its answers
-            String delimiter = System.getProperty("line.separator");
-            sc.useDelimiter(delimiter);
-            StringBuilder sb = new StringBuilder();
-            List<String> questions = new ArrayList<>();
-            
-            while (sc.hasNextLine())
+            // Start at 1 to skip over question line to get only answer lines
+            for (int j = 1; j < separator.length; j++)
             {
-                String line = sc.nextLine();
-                if(!(line.trim().length() == 0))
+                if(separator[j].length() > max)
                 {
-                    sb.append(line).append(delimiter);
-                }
-                else if
-                (sb.toString().length() > 0) 
-                {
-                    questions.add(sb.toString());
-                    sb.setLength(0);
+                    index = j;
+                    max = separator[j].length();
                 }
             }
-            
-            if(sb.toString().length() > 0) 
-            {
-                questions.add(sb.toString());
-            }
-            
-            // Splits each question + answer combination into their own array
-            // Than finds the answer with the maximum length and adds it to longs list
-            String[] separator = new String[0];
-            for (int i = 0; i < questions.size(); i++)
-            {
-                separator = questions.get(i).split("\n");
-               
-                int index = 0;
-                int max = separator[1].length();
-                
-                // Start at 1 to skip over question line to get only answer lines
-                for (int j = 1; j < separator.length; j++)
-                {
-                    if(separator[j].length() > max)
-                    {
-                        index = j;
-                        max = separator[j].length();
-                    }
-                }
-                longs.add(separator[index]);
-            }
-            sc.close();
-        } 
-        catch (Exception ex)
-        {
-            ex.printStackTrace();
+            longs.add(separator[index]);
         }
         
         return longs;
